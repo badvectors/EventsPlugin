@@ -17,6 +17,9 @@ namespace EventsPlugin
     {
         public string Name => "Events";
 
+        public static List<Event> Events { get; set; } = new List<Event>();
+        public static string SelectedEvent { get; set; }
+
         private static readonly Version _version = new Version(1, 0);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         public static HttpClient _httpClient = new HttpClient();
@@ -25,7 +28,6 @@ namespace EventsPlugin
         private static EventsWindow _eventsWindow;
 
         private static readonly string _eventsUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Events.json";
-        private static List<Event> _events = new List<Event>();
         private static List<Booking> _bookings = new List<Booking>();
 
         public EventsPlugin()
@@ -36,9 +38,7 @@ namespace EventsPlugin
 
             _ = CheckVersion();
 
-            GetBookings("https://ctl.vatsim.me/cross-the-land-asia-pacific-melbourne-slots/bookings");
-            GetBookings("https://ctl.vatsim.me/cross-the-land-asia-pacific-sydney-slots/bookings");
-            GetBookings("https://ctl.vatsim.me/cross-the-land-asia-pacific-darwin-slots/bookings");
+            _ = GetEvents();
 
             _bookings.Add(new Booking()
             {
@@ -79,6 +79,20 @@ namespace EventsPlugin
                 Errors.Add(new Exception("A new version of the plugin is available."), "Events Plugin");
             }
             catch { }
+        }
+
+        private static async Task GetEvents()
+        {
+            try
+            {
+                var response = await _httpClient.GetStringAsync(_eventsUrl);
+
+                Events = JsonConvert.DeserializeObject<List<Event>>(response);
+            }
+            catch 
+            {
+                Errors.Add(new Exception("Could not fetch list of events."), "Events Plugin");
+            }
         }
 
         private static void GetBookings(string url)

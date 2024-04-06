@@ -57,9 +57,9 @@
             this.labelDisplay.Location = new System.Drawing.Point(16, 12);
             this.labelDisplay.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.labelDisplay.Name = "labelDisplay";
-            this.labelDisplay.Size = new System.Drawing.Size(56, 17);
+            this.labelDisplay.Size = new System.Drawing.Size(104, 17);
             this.labelDisplay.TabIndex = 2;
-            this.labelDisplay.Text = "Server";
+            this.labelDisplay.Text = "Select Event";
             // 
             // EventsWindow
             // 
@@ -80,6 +80,7 @@
             this.Resizeable = false;
             this.Text = "Events";
             this.TopMost = true;
+            this.Load += new System.EventHandler(this.EventsWindow_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
