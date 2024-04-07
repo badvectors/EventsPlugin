@@ -1,6 +1,6 @@
 ﻿namespace EventsPlugin
 {
-    internal class Booking
+    public class Booking
     {
         public string CID { get; set; }
         public string Callsign { get; set; }

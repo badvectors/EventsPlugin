@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using vatsys;
 
 namespace EventsPlugin
@@ -17,10 +18,20 @@ namespace EventsPlugin
         {
             comboBoxDisplay.Items.Clear();
 
+            comboBoxDisplay.Items.Add(string.Empty);
+
             foreach (var ev in EventsPlugin.Events)
-            {
                 comboBoxDisplay.Items.Add(ev.Name);
-            }
+
+            if (EventsPlugin.SelectedEvent == null || !EventsPlugin.Events.Any(x => x.Name == EventsPlugin.SelectedEvent)) 
+                comboBoxDisplay.SelectedIndex = 0;
+            else
+                comboBoxDisplay.Text = EventsPlugin.SelectedEvent;
+        }
+
+        private void ComboBoxDisplay_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            EventsPlugin.SelectedEvent = comboBoxDisplay.Text;
         }
     }
 }

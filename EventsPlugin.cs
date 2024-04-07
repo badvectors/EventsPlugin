@@ -18,7 +18,6 @@ namespace EventsPlugin
         public string Name => "Events";
 
         public static List<Event> Events { get; set; } = new List<Event>();
-        public static string SelectedEvent { get; set; }
 
         private static readonly Version _version = new Version(1, 0);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
@@ -28,7 +27,26 @@ namespace EventsPlugin
         private static EventsWindow _eventsWindow;
 
         private static readonly string _eventsUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Events.json";
-        private static List<Booking> _bookings = new List<Booking>();
+        public static string SelectedEvent
+        {
+            get { return _selectedEvent?.Name; }
+            set
+            {
+                var ev = Events.FirstOrDefault(x => x.Name == value);
+                if (ev == null)
+                {
+                    _selectedEvent = null;
+                    return;
+                }
+                else
+                {
+                    _selectedEvent = ev;
+                }
+                foreach (var fdr in FDP2.GetFDRs)
+                    fdr.LocalOpData = fdr.LocalOpData;
+            }
+        }
+        private static Event _selectedEvent { get; set; }
 
         public EventsPlugin()
         {
@@ -39,12 +57,6 @@ namespace EventsPlugin
             _ = CheckVersion();
 
             _ = GetEvents();
-
-            _bookings.Add(new Booking()
-            {
-                Callsign = "JST430",
-                CTOT = "0815"
-            });
         }
 
         private void EventsMenu_Click(object sender, EventArgs e)
@@ -88,6 +100,11 @@ namespace EventsPlugin
                 var response = await _httpClient.GetStringAsync(_eventsUrl);
 
                 Events = JsonConvert.DeserializeObject<List<Event>>(response);
+
+                foreach (var ev in Events)
+                {
+                    foreach (var url in ev.Urls) GetBookings(url);
+                }
             }
             catch 
             {
@@ -151,7 +168,7 @@ namespace EventsPlugin
 
             if (flightDataRecord == null) return null;
 
-            var booking = _bookings.FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
+            var booking = _selectedEvent.Bookings.FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
 
             if (booking == null) return null;
 
@@ -185,12 +202,12 @@ namespace EventsPlugin
                 {
                     Text = flightDataRecord.ATD.ToString("HHmm"),
                     Border = BorderFlags.None,
-                    ForeColourIdentity = Colours.Identities.State,
+                    ForeColourIdentity = Colours.Identities.Default,
                     BorderColourIdentity = Colours.Identities.State,
                 };
             }
 
-            var booking = _bookings.FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
+            var booking = _selectedEvent.Bookings.FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
 
             if (booking == null) return null;
 

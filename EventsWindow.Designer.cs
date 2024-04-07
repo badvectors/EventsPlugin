@@ -49,6 +49,7 @@
             this.comboBoxDisplay.Name = "comboBoxDisplay";
             this.comboBoxDisplay.Size = new System.Drawing.Size(255, 25);
             this.comboBoxDisplay.TabIndex = 1;
+            this.comboBoxDisplay.SelectedIndexChanged += new System.EventHandler(this.ComboBoxDisplay_SelectedIndexChanged);
             // 
             // labelDisplay
             // 
