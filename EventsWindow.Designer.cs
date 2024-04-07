@@ -31,6 +31,7 @@
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
             this.comboBoxDisplay = new System.Windows.Forms.ComboBox();
             this.labelDisplay = new System.Windows.Forms.Label();
+            this.buttonRefresh = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // comboBoxDisplay
@@ -62,21 +63,32 @@
             this.labelDisplay.TabIndex = 2;
             this.labelDisplay.Text = "Select Event";
             // 
+            // buttonRefresh
+            // 
+            this.buttonRefresh.Location = new System.Drawing.Point(16, 63);
+            this.buttonRefresh.Name = "buttonRefresh";
+            this.buttonRefresh.Size = new System.Drawing.Size(255, 27);
+            this.buttonRefresh.TabIndex = 3;
+            this.buttonRefresh.Text = "Refresh Events";
+            this.buttonRefresh.UseVisualStyleBackColor = true;
+            this.buttonRefresh.Click += new System.EventHandler(this.ButtonRefresh_Click);
+            // 
             // EventsWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoValidate = System.Windows.Forms.AutoValidate.Disable;
             this.BackColor = System.Drawing.SystemColors.Window;
-            this.ClientSize = new System.Drawing.Size(284, 72);
+            this.ClientSize = new System.Drawing.Size(284, 102);
+            this.Controls.Add(this.buttonRefresh);
             this.Controls.Add(this.labelDisplay);
             this.Controls.Add(this.comboBoxDisplay);
             this.ForeColor = System.Drawing.SystemColors.InfoText;
             this.HasMinimizeButton = false;
             this.Margin = new System.Windows.Forms.Padding(4);
-            this.MaximumSize = new System.Drawing.Size(288, 100);
+            this.MaximumSize = new System.Drawing.Size(288, 130);
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(288, 100);
+            this.MinimumSize = new System.Drawing.Size(288, 130);
             this.Name = "EventsWindow";
             this.Resizeable = false;
             this.Text = "Events";
@@ -91,5 +103,6 @@
         private System.ComponentModel.BackgroundWorker backgroundWorker1;
         private System.Windows.Forms.ComboBox comboBoxDisplay;
         private System.Windows.Forms.Label labelDisplay;
+        private System.Windows.Forms.Button buttonRefresh;
     }
 }

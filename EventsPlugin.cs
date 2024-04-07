@@ -93,17 +93,21 @@ namespace EventsPlugin
             catch { }
         }
 
-        private static async Task GetEvents()
+        public static async Task GetEvents()
         {
             try
             {
+                SelectedEvent = null;
+
+                Events.Clear();
+
                 var response = await _httpClient.GetStringAsync(_eventsUrl);
 
                 Events = JsonConvert.DeserializeObject<List<Event>>(response);
 
                 foreach (var ev in Events)
                 {
-                    foreach (var url in ev.Urls) GetBookings(url);
+                    GetBookings(ev);
                 }
             }
             catch 
@@ -112,16 +116,19 @@ namespace EventsPlugin
             }
         }
 
-        private static void GetBookings(string url)
+        private static void GetBookings(Event ev)
         {
             var web = new HtmlWeb();
 
-            var htmlDocument = web.Load(url);
+            foreach (var url in ev.Urls)
+            {
+                var htmlDocument = web.Load(url);
 
-            if (htmlDocument.Text.Contains("Booking System by Dave Roverts")) Roverts(htmlDocument);
+                if (htmlDocument.Text.Contains("Booking System by Dave Roverts")) Roverts(ev, htmlDocument);
+            }
         }
 
-        private static void Roverts(HtmlAgilityPack.HtmlDocument htmlDocument)
+        private static void Roverts(Event ev, HtmlAgilityPack.HtmlDocument htmlDocument)
         {
             var rows = htmlDocument.DocumentNode.SelectNodes("//table[@class='table table-hover table-responsive']//tr");
 
@@ -139,7 +146,7 @@ namespace EventsPlugin
                 var type = cols[5].InnerText.Trim();
                 var cid = cols[6].InnerText.Trim().Replace("Booked [", "").Replace("]", "");
 
-                _bookings.Add(new Booking()
+                ev.Bookings.Add(new Booking()
                 {
                     CID = cid,
                     Callsign = callsign,
@@ -164,6 +171,8 @@ namespace EventsPlugin
 
         public CustomLabelItem GetCustomLabelItem(string itemType, Track track, FDP2.FDR flightDataRecord, RDP.RadarTrack radarTrack)
         {
+            if (_selectedEvent == null) return null;
+
             if (itemType != "LABEL_EVENT") return null;
 
             if (flightDataRecord == null) return null;
@@ -192,6 +201,8 @@ namespace EventsPlugin
 
         public CustomStripItem GetCustomStripItem(string itemType, Track track, FDP2.FDR flightDataRecord, RDP.RadarTrack radarTrack)
         {
+            if (_selectedEvent == null) return null;
+
             if (itemType != "STRIP_ATD") return null;
 
             if (flightDataRecord == null) return null;
