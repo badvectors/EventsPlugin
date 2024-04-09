@@ -6,22 +6,27 @@ using System.ComponentModel.Composition;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows.Forms;
 using vatsys;
 using vatsys.Plugin;
+using Timer = System.Timers.Timer;
 
 namespace EventsPlugin
 {
     [Export(typeof(IPlugin))]
-    public class EventsPlugin : IStripPlugin, ILabelPlugin
+    public class Plugin : IStripPlugin, ILabelPlugin
     {
         public string Name => "Events";
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 0);
+        private static readonly Version _version = new Version(1, 1);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         public static HttpClient _httpClient = new HttpClient();
+
+        private static readonly string _dataUrl = "https://data.vatsim.net/v3/vatsim-data.json";
+        private Timer _dataTimer { get; set; } = new Timer();
 
         private static CustomToolStripMenuItem _eventsMenu;
         private static EventsWindow _eventsWindow;
@@ -48,7 +53,7 @@ namespace EventsPlugin
         }
         private static Event _selectedEvent { get; set; }
 
-        public EventsPlugin()
+        public Plugin()
         {
             _eventsMenu = new CustomToolStripMenuItem(CustomToolStripMenuItemWindowType.Main, CustomToolStripMenuItemCategory.Settings, new ToolStripMenuItem("Events"));
             _eventsMenu.Item.Click += EventsMenu_Click;
@@ -57,6 +62,18 @@ namespace EventsPlugin
             _ = CheckVersion();
 
             _ = GetEvents();
+
+            _dataTimer.Elapsed += new ElapsedEventHandler(PositionTimer_Elapsed);
+            _dataTimer.Interval = 15000.0;
+            _dataTimer.AutoReset = false;
+            _dataTimer.Start();
+        }
+
+        private async void PositionTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            await ProcessVatsimData();
+
+            _dataTimer.Start();
         }
 
         private void EventsMenu_Click(object sender, EventArgs e)
@@ -159,6 +176,49 @@ namespace EventsPlugin
             }
         }
 
+        private async Task<VatsimData> GetVatsimData()
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync(_dataUrl);
+
+                response.EnsureSuccessStatusCode();
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+
+                return JsonConvert.DeserializeObject<VatsimData>(jsonResponse);
+            }
+            catch { return null; }
+        }
+
+        private async Task ProcessVatsimData()
+        {
+            if (_selectedEvent == null) return;
+
+            var vatsimData = await GetVatsimData();
+
+            if (vatsimData == null) return;
+
+            foreach (var pilot in vatsimData.pilots)
+            {
+                var bookingByCID = _selectedEvent.Bookings
+                    .FirstOrDefault(x => x.CID == pilot.cid.ToString());
+
+                var bookingByCallsign = _selectedEvent.Bookings
+                    .FirstOrDefault(x => x.Callsign == pilot.callsign);
+
+                if (bookingByCID != null && bookingByCID.Callsign != pilot.callsign)
+                {
+                    bookingByCID.Callsign = pilot.callsign;
+                }
+
+                if (bookingByCallsign != null && bookingByCallsign.CID != pilot.cid.ToString())
+                {
+                    bookingByCallsign.Callsign = null;
+                }
+            }
+        }
+
         public void OnFDRUpdate(FDP2.FDR updated)
         {
             return;
@@ -177,7 +237,8 @@ namespace EventsPlugin
 
             if (flightDataRecord == null) return null;
 
-            var booking = _selectedEvent.Bookings.FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
+            var booking = _selectedEvent.Bookings
+                .FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
 
             if (booking == null) return null;
 
@@ -218,7 +279,8 @@ namespace EventsPlugin
                 };
             }
 
-            var booking = _selectedEvent.Bookings.FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
+            var booking = _selectedEvent.Bookings
+                .FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
 
             if (booking == null) return null;
 
