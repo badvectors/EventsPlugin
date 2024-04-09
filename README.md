@@ -1,16 +1,15 @@
-# SimulatorPlugin
+# EventsPlugin
 
-A plugin that selects the aircraft in the simulator for [vatSys](https://virtualairtrafficsystem.com/).
+A plugin that highlights [vatSys](https://virtualairtrafficsystem.com/).
 
 #### Installation
 
-1. Download the plugin [here](https://github.com/badvectors/SimulatorPlugin/releases/download/release/SimulatorPluginV1.1.zip).
-2. **Right click on the zip file and select "Unblock".**
-3. Unzip the file and copy to the base vatSys plugins directory: "[...]\Program Files (x86)\vatSys\bin\Plugins".
-4. Verify it has been installed in vatSys by checking "Info > About".
+Coming soon (requires updaates to Strips.xml and Labels.xml).
 
 #### How to use
 
-Select the simualator server in Settings > Simulator.
+Select the event to show in Settings > Events.
 
-You can click on the flight data strip for any aircraft and also the target on the radar if the target is activated.
+The ATD slot in the FDR will show the CTOT in gold until the aircraft departs. 
+
+The CTOT is also shown on the departure ground view in gold.
