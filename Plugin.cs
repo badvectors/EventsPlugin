@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
@@ -124,7 +126,7 @@ namespace EventsPlugin
 
                 foreach (var ev in Events)
                 {
-                    GetBookings(ev);
+                    await GetBookings(ev);
                 }
             }
             catch 
@@ -133,12 +135,18 @@ namespace EventsPlugin
             }
         }
 
-        private static void GetBookings(Event ev)
+        private static async Task GetBookings(Event ev)
         {
             var web = new HtmlWeb();
 
             foreach (var url in ev.Urls)
             {
+                if (url.EndsWith(".json"))
+                {
+                    await Json(ev, url);
+                    continue;
+                }
+
                 var htmlDocument = web.Load(url);
 
                 if (htmlDocument.Text.Contains("Booking System by Dave Roverts")) Roverts(ev, htmlDocument);
@@ -174,6 +182,31 @@ namespace EventsPlugin
                     ETA = eta
                 });
             }
+        }
+
+        private static async Task Json(Event ev, string url)
+        {
+            try
+            {
+                var response = await _httpClient.GetStringAsync(url);
+
+                var bookings = JsonConvert.DeserializeObject<List<Booking>>(response);
+
+                foreach (var booking in bookings)
+                {
+                    ev.Bookings.Add(new Booking()
+                    {
+                        CID = booking.CID,
+                        Callsign = booking.Callsign,
+                        From = booking.From,
+                        To = booking.To,
+                        Type = booking.Type,
+                        CTOT = booking.CTOT,
+                        ETA = booking.ETA
+                    });
+                }
+            }
+            catch { }
         }
 
         private async Task<VatsimData> GetVatsimData()

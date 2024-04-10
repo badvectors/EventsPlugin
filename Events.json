@@ -6,5 +6,11 @@
       "https://ctl.vatsim.me/cross-the-land-asia-pacific-sydney-slots/bookings",
       "https://ctl.vatsim.me/cross-the-land-asia-pacific-darwin-slots/bookings"
     ]
+  },
+  {
+    "Name": "Test Event",
+    "Urls": [
+      "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Test.json"
+    ]
   }
 ]
