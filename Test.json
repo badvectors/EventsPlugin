@@ -1,7 +1,16 @@
 [
   {
-    "CID": 1685030,
+    "CID": 1685029,
     "Callsign": "VOZ931",
+    "Type": "B738",
+    "From": "YSSY",
+    "To": "YMML",
+    "CTOT": "0805",
+    "ETA": "0910"
+  },
+  {
+    "CID": 1005399,
+    "Callsign": "QFA989",
     "Type": "B738",
     "From": "YSSY",
     "To": "YMML",
