@@ -273,6 +273,16 @@ namespace EventsPlugin
 
             if (booking == null) return null;
 
+            if (flightDataRecord.ATD != DateTime.MaxValue)
+            {
+                return new CustomLabelItem()
+                {
+                    Type = itemType,
+                    ForeColourIdentity = Colours.Identities.StaticTools,
+                    Text = "EV"
+                };
+            }
+
             return new CustomLabelItem()
             {
                 Type = itemType,
@@ -295,33 +305,49 @@ namespace EventsPlugin
         {
             if (_selectedEvent == null) return null;
 
-            if (itemType != "STRIP_ATD") return null;
-
             if (flightDataRecord == null) return null;
-
-            if (flightDataRecord.ATD != DateTime.MaxValue)
-            {
-                return new CustomStripItem()
-                {
-                    Text = flightDataRecord.ATD.ToString("HHmm"),
-                    Border = BorderFlags.None,
-                    ForeColourIdentity = Colours.Identities.Default,
-                    BorderColourIdentity = Colours.Identities.State,
-                };
-            }
 
             var booking = _selectedEvent.Bookings
                 .FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
 
-            if (booking == null) return null;
-
-            return new CustomStripItem()
+            if (itemType == "STRIP_ATD")
             {
-                Text = booking.CTOT,
-                Border = BorderFlags.None,
-                ForeColourIdentity = Colours.Identities.StaticTools,
-                BorderColourIdentity = Colours.Identities.State,
-            };
+                if (flightDataRecord.ATD != DateTime.MaxValue)
+                {
+                    return new CustomStripItem()
+                    {
+                        Text = flightDataRecord.ATD.ToString("HHmm"),
+                        Border = BorderFlags.None,
+                        ForeColourIdentity = Colours.Identities.Default,
+                        BorderColourIdentity = Colours.Identities.State,
+                    };
+                }
+
+                if (booking == null) return null;
+
+                return new CustomStripItem()
+                {
+                    Text = booking.CTOT,
+                    Border = BorderFlags.None,
+                    ForeColourIdentity = Colours.Identities.StaticTools,
+                    BorderColourIdentity = Colours.Identities.State,
+                };
+            }
+
+            if (itemType == "STRIP_EVENT")
+            {
+                if (booking == null) return null;
+
+                return new CustomStripItem()
+                {
+                    Text = "EV",
+                    Border = BorderFlags.None,
+                    ForeColourIdentity = Colours.Identities.StaticTools,
+                    BorderColourIdentity = Colours.Identities.State,
+                };
+            }
+
+            return null;
         }
     }
 }
