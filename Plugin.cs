@@ -287,7 +287,7 @@ namespace EventsPlugin
             {
                 Type = itemType,
                 ForeColourIdentity = Colours.Identities.StaticTools,
-                Text = booking.CTOB()
+                Text = booking.COTB()
             };
         }
 
@@ -327,7 +327,7 @@ namespace EventsPlugin
 
                 return new CustomStripItem()
                 {
-                    Text = booking.CTOB(),
+                    Text = booking.COTB(),
                     Border = BorderFlags.None,
                     ForeColourIdentity = Colours.Identities.StaticTools,
                     BorderColourIdentity = Colours.Identities.State,

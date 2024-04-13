@@ -12,7 +12,7 @@ namespace EventsPlugin
         public string CTOT { get; set; }
         public string ETA { get; set; }
 
-        public string CTOB()
+        public string COTB()
         {
             if (CTOT == null || CTOT.Length != 4) return string.Empty;
 
@@ -30,9 +30,9 @@ namespace EventsPlugin
                 DateTime.UtcNow.Month, 
                 DateTime.UtcNow.Day, hour, minute, 0);
 
-            var ctob = ctot.AddMinutes(-10);
+            var cotb = ctot.AddMinutes(-10);
 
-            return ctob.ToString("HHmm");
+            return cotb.ToString("HHmm");
         }
     }
 }
