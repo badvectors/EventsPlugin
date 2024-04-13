@@ -3,11 +3,15 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
+using System.Xml;
 using vatsys;
 using vatsys.Plugin;
 using Timer = System.Timers.Timer;
@@ -53,11 +57,17 @@ namespace EventsPlugin
         }
         private static Event _selectedEvent { get; set; }
 
+        public static string DatasetPath { get; set; }
+
         public Plugin()
         {
             _eventsMenu = new CustomToolStripMenuItem(CustomToolStripMenuItemWindowType.Main, CustomToolStripMenuItemCategory.Settings, new ToolStripMenuItem("Events"));
             _eventsMenu.Item.Click += EventsMenu_Click;
             MMI.AddCustomMenuItem(_eventsMenu);
+
+            GetSettings();
+
+            UpdateFiles();
 
             _ = CheckVersion();
 
@@ -348,6 +358,99 @@ namespace EventsPlugin
             }
 
             return null;
+        }
+
+        private void GetSettings()
+        {
+            var configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.PerUserRoamingAndLocal);
+
+            if (!configuration.HasFile) return;
+
+            if (!File.Exists(configuration.FilePath)) return;
+
+            var config = File.ReadAllText(configuration.FilePath);
+
+            XmlDocument doc = new XmlDocument();
+
+            doc.LoadXml(config);
+
+            XmlElement root = doc.DocumentElement;
+
+            var userSettings = root.SelectSingleNode("userSettings");
+
+            var settings = userSettings.SelectSingleNode("vatsys.Properties.Settings");
+
+            foreach (XmlNode node in settings.ChildNodes)
+            {
+                if (node.Attributes.GetNamedItem("name").Value == "DatasetPath")
+                {
+                    DatasetPath = node.InnerText;
+                    break;
+                }
+            }
+        }
+
+        private void UpdateFiles()
+        {
+            var showWarning = false;
+
+            var stripsFile = DatasetPath + "\\Strips.xml";
+
+            var stripsSource = AssemblyDirectory + "\\Strips.xml";
+
+            if (!File.Exists(stripsFile))
+            {
+                File.Copy(stripsSource, stripsFile, true);
+                showWarning = true;
+            }
+            else
+            {
+                var existingFile = File.ReadAllText(stripsFile);
+                
+                var newFile = File.ReadAllText(stripsSource);
+
+                if (existingFile != newFile)
+                {
+                    File.Copy(stripsSource, stripsFile, true);
+                    showWarning = true;
+                }
+            }
+
+            var labelsFile = DatasetPath + "\\Labels.xml";
+
+            var labelsSource = AssemblyDirectory + "\\Labels.xml";
+
+            if (!File.Exists(labelsFile))
+            {
+                File.Copy(labelsSource, labelsFile, true);
+                showWarning = true;
+            }
+            else
+            {
+                var existingFile = File.ReadAllText(labelsFile);
+
+                var newFile = File.ReadAllText(labelsSource);
+
+                if (existingFile != newFile)
+                {
+                    File.Copy(labelsSource, labelsFile, true);
+                    showWarning = true;
+                }
+            }
+
+            if (showWarning)
+                Errors.Add(new Exception("Updates installed. Restart vatSys for changes to take effect."), "Events Plugin");
+        }
+
+        public static string AssemblyDirectory
+        {
+            get
+            {
+                string codeBase = Assembly.GetExecutingAssembly().CodeBase;
+                UriBuilder uri = new UriBuilder(codeBase);
+                string path = Uri.UnescapeDataString(uri.Path);
+                return Path.GetDirectoryName(path);
+            }
         }
     }
 }
