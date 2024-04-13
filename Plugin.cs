@@ -264,9 +264,9 @@ namespace EventsPlugin
         {
             if (_selectedEvent == null) return null;
 
-            if (itemType != "LABEL_EVENT") return null;
-
             if (flightDataRecord == null) return null;
+
+            if (itemType != "LABEL_EVENT") return null;
 
             var booking = _selectedEvent.Bookings
                 .FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
