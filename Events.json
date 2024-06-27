@@ -1,16 +1,26 @@
 ﻿[
   {
-    "Name": "Cross the Land: Asia Pacific",
+    "Name": "MRM 1 July 2024",
     "Urls": [
-      "https://ctl.vatsim.me/cross-the-land-asia-pacific-melbourne-slots/bookings",
-      "https://ctl.vatsim.me/cross-the-land-asia-pacific-sydney-slots/bookings",
-      "https://ctl.vatsim.me/cross-the-land-asia-pacific-darwin-slots/bookings"
+      "https://booking.vatpac.org/1jul24-milk-run-monday/bookings"
     ]
   },
   {
-    "Name": "Test Event",
+    "Name": "MRM 8 July 2024",
     "Urls": [
-      "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Test.json"
+      "https://booking.vatpac.org/8jul24-milk-run-monday/bookings"
+    ]
+  },
+  {
+    "Name": "MRM 15 July 2024",
+    "Urls": [
+      "https://booking.vatpac.org/15jul24-milk-run-monday/bookings"
+    ]
+  },
+  {
+    "Name": "MRM 22 July 2024",
+    "Urls": [
+      "https://booking.vatpac.org/22jul24-milk-run-monday/bookings"
     ]
   }
 ]

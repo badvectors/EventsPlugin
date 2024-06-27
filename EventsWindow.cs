@@ -12,6 +12,9 @@ namespace EventsPlugin
 
             BackColor = Colours.GetColour(Colours.Identities.WindowBackground);
             ForeColor = Colours.GetColour(Colours.Identities.InteractiveText);
+
+            buttonRefresh.BackColor = BackColor;
+            buttonRefresh.ForeColor = ForeColor;
         }
 
         private void EventsWindow_Load(object sender, EventArgs e)
