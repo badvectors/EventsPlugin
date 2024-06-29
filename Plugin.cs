@@ -25,7 +25,7 @@ namespace EventsPlugin
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 1);
+        private static readonly Version _version = new Version(1, 3);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         public static HttpClient _httpClient = new HttpClient();
 
@@ -134,14 +134,16 @@ namespace EventsPlugin
 
                 Events = JsonConvert.DeserializeObject<List<Event>>(response);
 
+                if (Events == null) return;
+
                 foreach (var ev in Events)
                 {
                     await GetBookings(ev);
                 }
             }
-            catch 
+            catch (Exception ex)
             {
-                Errors.Add(new Exception("Could not fetch list of events."), "Events Plugin");
+                Errors.Add(new Exception($"Could not fetch list of events: {ex.Message}"), "Events Plugin");
             }
         }
 
@@ -166,6 +168,8 @@ namespace EventsPlugin
         private static void Roverts(Event ev, HtmlAgilityPack.HtmlDocument htmlDocument)
         {
             var rows = htmlDocument.DocumentNode.SelectNodes("//table[@class='table table-hover table-responsive']//tr");
+
+            if (rows == null) return;
 
             foreach (HtmlNode row in rows.Skip(1))
             {
