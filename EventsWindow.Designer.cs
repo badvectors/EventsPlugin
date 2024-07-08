@@ -32,6 +32,7 @@
             this.comboBoxDisplay = new System.Windows.Forms.ComboBox();
             this.labelDisplay = new System.Windows.Forms.Label();
             this.buttonRefresh = new System.Windows.Forms.Button();
+            this.LabelBookings = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // comboBoxDisplay
@@ -65,13 +66,22 @@
             // 
             // buttonRefresh
             // 
-            this.buttonRefresh.Location = new System.Drawing.Point(16, 63);
+            this.buttonRefresh.Location = new System.Drawing.Point(167, 63);
             this.buttonRefresh.Name = "buttonRefresh";
-            this.buttonRefresh.Size = new System.Drawing.Size(255, 27);
+            this.buttonRefresh.Size = new System.Drawing.Size(104, 27);
             this.buttonRefresh.TabIndex = 3;
-            this.buttonRefresh.Text = "Refresh Events";
+            this.buttonRefresh.Text = "Refresh";
             this.buttonRefresh.UseVisualStyleBackColor = true;
             this.buttonRefresh.Click += new System.EventHandler(this.ButtonRefresh_Click);
+            // 
+            // LabelBookings
+            // 
+            this.LabelBookings.AutoSize = true;
+            this.LabelBookings.Location = new System.Drawing.Point(16, 68);
+            this.LabelBookings.Name = "LabelBookings";
+            this.LabelBookings.Size = new System.Drawing.Size(96, 17);
+            this.LabelBookings.TabIndex = 4;
+            this.LabelBookings.Text = "Bookings: 0";
             // 
             // EventsWindow
             // 
@@ -80,6 +90,7 @@
             this.AutoValidate = System.Windows.Forms.AutoValidate.Disable;
             this.BackColor = System.Drawing.SystemColors.Window;
             this.ClientSize = new System.Drawing.Size(284, 102);
+            this.Controls.Add(this.LabelBookings);
             this.Controls.Add(this.buttonRefresh);
             this.Controls.Add(this.labelDisplay);
             this.Controls.Add(this.comboBoxDisplay);
@@ -104,5 +115,6 @@
         private System.Windows.Forms.ComboBox comboBoxDisplay;
         private System.Windows.Forms.Label labelDisplay;
         private System.Windows.Forms.Button buttonRefresh;
+        private System.Windows.Forms.Label LabelBookings;
     }
 }

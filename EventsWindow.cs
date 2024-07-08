@@ -20,11 +20,15 @@ namespace EventsPlugin
         private void EventsWindow_Load(object sender, EventArgs e)
         {
             UpdateComboBox();
+
+            DisplayBookings();
         }
 
         private void ComboBoxDisplay_SelectedIndexChanged(object sender, EventArgs e)
         {
             Plugin.SelectedEvent = comboBoxDisplay.Text;
+
+            DisplayBookings();
         }
 
         private async void ButtonRefresh_Click(object sender, EventArgs e)
@@ -32,6 +36,22 @@ namespace EventsPlugin
             await Plugin.GetEvents();
 
             UpdateComboBox();
+
+            DisplayBookings();
+        }
+
+        private void DisplayBookings()
+        {
+            var selectedEvent = Plugin.Events.FirstOrDefault(x => x.Name == Plugin.SelectedEvent);
+
+            if (selectedEvent != null)
+            {
+                LabelBookings.Text = $"Bookings: {selectedEvent.Bookings.Count}";
+            }
+            else
+            {
+                LabelBookings.Text = "";
+            }
         }
 
         private void UpdateComboBox()

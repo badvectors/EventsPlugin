@@ -25,9 +25,9 @@ namespace EventsPlugin
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 3);
+        private static readonly Version _version = new Version(1, 4);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
-        public static HttpClient _httpClient = new HttpClient();
+        private static HttpClient _httpClient = new HttpClient();
 
         private static readonly string _dataUrl = "https://data.vatsim.net/v3/vatsim-data.json";
         private Timer _dataTimer { get; set; } = new Timer();
@@ -83,7 +83,11 @@ namespace EventsPlugin
 
         private async void PositionTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            await ProcessVatsimData();
+            if (_selectedEvent != null)
+            {
+                await GetBookings(_selectedEvent);
+                await ProcessVatsimData();
+            }
 
             _dataTimer.Start();
         }
@@ -149,53 +153,75 @@ namespace EventsPlugin
 
         private static async Task GetBookings(Event ev)
         {
-            var web = new HtmlWeb();
-
-            foreach (var url in ev.Urls)
+            try
             {
-                if (url.EndsWith(".json"))
+                var web = new HtmlWeb();
+
+                foreach (var url in ev.Urls)
                 {
-                    await Json(ev, url);
-                    continue;
+                    if (url.EndsWith(".json"))
+                    {
+                        await Json(ev, url);
+                        continue;
+                    }
+
+                    var htmlDocument = web.Load(url);
+
+                    if (htmlDocument.Text.Contains("Booking System by Dave Roverts")) Roverts(ev, htmlDocument);
                 }
-
-                var htmlDocument = web.Load(url);
-
-                if (htmlDocument.Text.Contains("Booking System by Dave Roverts")) Roverts(ev, htmlDocument);
             }
+            catch { }
         }
 
         private static void Roverts(Event ev, HtmlAgilityPack.HtmlDocument htmlDocument)
         {
-            var rows = htmlDocument.DocumentNode.SelectNodes("//table[@class='table table-hover table-responsive']//tr");
-
-            if (rows == null) return;
-
-            foreach (HtmlNode row in rows.Skip(1))
+            try
             {
-                var cols = row.SelectNodes(".//td");
+                var rows = htmlDocument.DocumentNode.SelectNodes("//table[@class='table table-hover table-responsive']//tr");
 
-                if (cols[6].InnerText.Contains("Click here")) continue;
+                if (rows == null) return;
 
-                var from = cols[0].InnerText.Trim();
-                var to = cols[1].InnerText.Trim();
-                var ctot = cols[2].InnerText.Trim().Replace("z", "");
-                var eta = cols[3].InnerText.Trim().Replace("z", "");
-                var callsign = cols[4].InnerText.Trim();
-                var type = cols[5].InnerText.Trim();
-                var cid = cols[6].InnerText.Trim().Replace("Booked [", "").Replace("]", "");
-
-                ev.Bookings.Add(new Booking()
+                foreach (HtmlNode row in rows.Skip(1))
                 {
-                    CID = cid,
-                    Callsign = callsign,
-                    From = from,
-                    To = to,
-                    Type = type,
-                    CTOT = ctot,
-                    ETA = eta
-                });
+                    var cols = row.SelectNodes(".//td");
+
+                    if (cols[6].InnerText.Contains("Click here")) continue;
+
+                    var from = cols[0].InnerText.Trim();
+                    var to = cols[1].InnerText.Trim();
+                    var ctot = cols[2].InnerText.Trim().Replace("z", "");
+                    var eta = cols[3].InnerText.Trim().Replace("z", "");
+                    var callsign = cols[4].InnerText.Trim();
+                    var type = cols[5].InnerText.Trim();
+                    var cid = cols[6].InnerText.Trim().Replace("Booked [", "").Replace("]", "");
+
+                    var existing = ev.Bookings.FirstOrDefault(x => x.CID == cid);
+
+                    if (existing != null)
+                    {
+                        existing.From = from;
+                        existing.To = to;
+                        existing.CTOT = ctot;
+                        existing.ETA = eta;
+                        existing.Callsign = callsign;
+                        existing.Type = type;
+
+                        continue;
+                    }
+
+                    ev.Bookings.Add(new Booking()
+                    {
+                        CID = cid,
+                        Callsign = callsign,
+                        From = from,
+                        To = to,
+                        Type = type,
+                        CTOT = ctot,
+                        ETA = eta
+                    });
+                }
             }
+            catch { }
         }
 
         private static async Task Json(Event ev, string url)
@@ -208,6 +234,20 @@ namespace EventsPlugin
 
                 foreach (var booking in bookings)
                 {
+                    var existing = ev.Bookings.FirstOrDefault(x => x.CID == booking.CID);
+
+                    if (existing != null)
+                    {
+                        existing.From = booking.From;
+                        existing.To = booking.To;
+                        existing.CTOT = booking.CTOT;
+                        existing.ETA = booking.ETA;
+                        existing.Callsign = booking.Callsign;
+                        existing.Type = booking.Type;
+
+                        continue;
+                    }
+
                     ev.Bookings.Add(new Booking()
                     {
                         CID = booking.CID,
