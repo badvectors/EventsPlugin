@@ -1,0 +1,29 @@
+[
+  {
+    "CID": 1715794,
+    "Callsign": "JST818",
+    "Type": "B738",
+    "From": "YSSY",
+    "To": "YMML",
+    "CTOT": "0805",
+    "ETA": "0910"
+  },
+  {
+    "CID": 1796307,
+    "Callsign": "ALK605",
+    "Type": "B738",
+    "From": "YSSY",
+    "To": "YMML",
+    "CTOT": "0805",
+    "ETA": "0910"
+  },
+  {
+    "CID": 877264,
+    "Callsign": "VHDRS",
+    "Type": "B738",
+    "From": "YSSY",
+    "To": "YMML",
+    "CTOT": "0805",
+    "ETA": "0910"
+  }
+]
