@@ -1,8 +1,8 @@
 [
   {
-    "Name": "24 hours of VATSIM",
+    "Name": "World Flight",
     "Urls": [
-      "https://booking.vatsim.net/24-hours-of-vatsim-october-2024-leg-9/bookings"
+      "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/WorldFlight.json"
     ]
   }
 ]
