@@ -25,7 +25,7 @@ namespace EventsPlugin
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 4);
+        private static readonly Version _version = new Version(1, 5);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         private static HttpClient _httpClient = new HttpClient();
 
@@ -335,7 +335,7 @@ namespace EventsPlugin
                 {
                     Type = itemType,
                     ForeColourIdentity = Colours.Identities.StaticTools,
-                    Text = "EV"
+                    Text = SelectedEvent == "World Flight" ? "WF" : "EV"
                 };
             }
 
@@ -343,7 +343,7 @@ namespace EventsPlugin
             {
                 Type = itemType,
                 ForeColourIdentity = Colours.Identities.StaticTools,
-                Text = booking.COTB()
+                Text = SelectedEvent == "World Flight" ? "WF" : booking.COTB()
             };
         }
 
@@ -379,7 +379,7 @@ namespace EventsPlugin
                     };
                 }
 
-                if (booking == null) return null;
+                if (booking == null || SelectedEvent == "World Flight") return null;
 
                 return new CustomStripItem()
                 {
@@ -396,7 +396,7 @@ namespace EventsPlugin
 
                 return new CustomStripItem()
                 {
-                    Text = "EV",
+                    Text = SelectedEvent == "World Flight" ? "WF" : "EV",
                     Border = BorderFlags.None,
                     ForeColourIdentity = Colours.Identities.StaticTools,
                     BorderColourIdentity = Colours.Identities.State,
