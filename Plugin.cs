@@ -25,7 +25,7 @@ namespace EventsPlugin
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 5);
+        private static readonly Version _version = new Version(1, 6);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         private static HttpClient _httpClient = new HttpClient();
 
@@ -453,9 +453,7 @@ namespace EventsPlugin
             {
                 var existingFile = File.ReadAllText(stripsFile);
                 
-                var newFile = File.ReadAllText(stripsSource);
-
-                if (existingFile != newFile)
+                if (!existingFile.Contains("STRIP_EVENT"))
                 {
                     File.Copy(stripsSource, stripsFile, true);
                     showWarning = true;
@@ -477,7 +475,7 @@ namespace EventsPlugin
 
                 var newFile = File.ReadAllText(labelsSource);
 
-                if (existingFile != newFile)
+                if (!existingFile.Contains("LABEL_EVENT"))
                 {
                     File.Copy(labelsSource, labelsFile, true);
                     showWarning = true;
