@@ -1,5 +1,14 @@
 [
   {
+    "CID": 0,
+    "Callsign": "QFA63",
+    "Type": "",
+    "From": "",
+    "To": "",
+    "CTOT": "0000",
+    "ETA": "0000"
+  },
+  {
     "CID": 811093,
     "Callsign": "QFA25",
     "Type": "B744",
