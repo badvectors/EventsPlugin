@@ -25,7 +25,7 @@ namespace EventsPlugin
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 6);
+        private static readonly Version _version = new Version(1, 7);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         private static HttpClient _httpClient = new HttpClient();
 
@@ -294,12 +294,14 @@ namespace EventsPlugin
                 var bookingByCallsign = _selectedEvent.Bookings
                     .FirstOrDefault(x => x.Callsign == pilot.callsign);
 
+                // If there is a booking for the CID but the callsign is different, override to the new callsign.
                 if (bookingByCID != null && bookingByCID.Callsign != pilot.callsign)
                 {
                     bookingByCID.Callsign = pilot.callsign;
                 }
 
-                if (bookingByCallsign != null && bookingByCallsign.CID != pilot.cid.ToString())
+                // If there is a booking for the callsign but a different CID is logged on, remove the booking from the callsign.
+                if (bookingByCallsign != null && bookingByCallsign.CID != "0" && bookingByCallsign.CID != pilot.cid.ToString())
                 {
                     bookingByCallsign.Callsign = null;
                 }
