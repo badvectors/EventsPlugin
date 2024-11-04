@@ -25,7 +25,7 @@ namespace EventsPlugin
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 7);
+        private static readonly Version _version = new Version(1, 8);
         private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         private static HttpClient _httpClient = new HttpClient();
 
