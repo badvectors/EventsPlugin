@@ -234,7 +234,7 @@ namespace EventsPlugin
 
                 foreach (var booking in bookings)
                 {
-                    var existing = ev.Bookings.FirstOrDefault(x => x.CID == booking.CID);
+                    var existing = ev.Bookings.FirstOrDefault(x => x.CID == booking.CID && x.Callsign == booking.Callsign);
 
                     if (existing != null)
                     {
