@@ -1,8 +1,8 @@
 [
   {
-    "Name": "World Flight",
+    "Name": "24 hours of VATSIM",
     "Urls": [
-      "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/WorldFlight.json"
+      "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/24hours.json"
     ]
   }
 ]
