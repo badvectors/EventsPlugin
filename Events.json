@@ -1,8 +1,8 @@
 [
   {
-    "Name": "24 hours of VATSIM",
+    "Name": "Cross The Land",
     "Urls": [
-      "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/24hours.json"
+      "https://ctl.vatsim.me/cross-the-land-asia-pacific-northbound-2025/bookings"
     ]
   }
 ]
