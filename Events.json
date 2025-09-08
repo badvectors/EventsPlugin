@@ -1,8 +1,8 @@
 [
   {
-    "Name": "Cross The Land",
+    "Name": "Testing",
     "Urls": [
-      "https://ctl.vatsim.me/cross-the-land-asia-pacific-northbound-2025/bookings"
+      "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/Test.json"
     ]
   }
 ]
