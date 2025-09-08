@@ -298,12 +298,16 @@ namespace EventsPlugin
                 if (bookingByCID != null && bookingByCID.Callsign != pilot.callsign)
                 {
                     bookingByCID.Callsign = pilot.callsign;
+
+                    continue;
                 }
 
                 // If there is a booking for the callsign but a different CID is logged on, remove the booking from the callsign.
                 if (bookingByCallsign != null && bookingByCallsign.CID != "0" && bookingByCallsign.CID != pilot.cid.ToString())
                 {
                     bookingByCallsign.Callsign = null;
+
+                    continue;
                 }
             }
         }
