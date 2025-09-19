@@ -1,11 +1,5 @@
 [
   {
-    "Name": "Real Ops Sydney",
-    "Urls": [
-        "https://booking.vatpac.org/real-ops-sydney/bookings"
-    ]
-  },
-  {
     "Name": "Testing",
     "Urls": [
       "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/Test.json"
