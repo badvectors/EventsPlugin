@@ -12,9 +12,9 @@ namespace EventsPlugin
         public string CTOT { get; set; }
         public string ETA { get; set; }
 
-        public string COTB()
+        public DateTime? CTOT_DateTime()
         {
-            if (CTOT == null || CTOT.Length != 4) return string.Empty;
+            if (CTOT == null || CTOT.Length != 4) return null;
 
             var hourString = CTOT.Substring(0, 2);
 
@@ -24,15 +24,25 @@ namespace EventsPlugin
 
             var minuteOK = int.TryParse(minuteString, out var minute);
 
-            if (!hourOK || !minuteOK) return string.Empty;
+            if (!hourOK || !minuteOK) return null;
 
-            var ctot = new DateTime(DateTime.UtcNow.Year, 
-                DateTime.UtcNow.Month, 
+            return new DateTime(DateTime.UtcNow.Year,
+                DateTime.UtcNow.Month,
                 DateTime.UtcNow.Day, hour, minute, 0);
+        }
 
-            var cotb = ctot.AddMinutes(-10);
+        public DateTime? COBT_DateTime()
+        {
+            if (CTOT_DateTime() == null) return null;
 
-            return cotb.ToString("HHmm");
+            return CTOT_DateTime().Value.AddMinutes(-10);
+        }
+
+        public string COBT()
+        {
+            if (COBT_DateTime() == null) return string.Empty;
+
+            return COBT_DateTime().Value.ToString("HHmm");
         }
     }
 }

@@ -3,15 +3,11 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
-using System.Configuration;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
-using System.Xml;
 using vatsys;
 using vatsys.Plugin;
 using Timer = System.Timers.Timer;
@@ -25,8 +21,6 @@ namespace EventsPlugin
 
         public static List<Event> Events { get; set; } = new List<Event>();
 
-        private static readonly Version _version = new Version(1, 8);
-        private static readonly string _versionUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Version.json";
         private static HttpClient _httpClient = new HttpClient();
 
         private static readonly string _dataUrl = "https://data.vatsim.net/v3/vatsim-data.json";
@@ -50,9 +44,12 @@ namespace EventsPlugin
                 else
                 {
                     _selectedEvent = ev;
+                    UpdateStrips();
                 }
                 foreach (var fdr in FDP2.GetFDRs)
+                {
                     fdr.LocalOpData = fdr.LocalOpData;
+                }
             }
         }
         private static Event _selectedEvent { get; set; }
@@ -67,25 +64,20 @@ namespace EventsPlugin
             _eventsMenu.Item.Click += EventsMenu_Click;
             MMI.AddCustomMenuItem(_eventsMenu);
 
-            GetSettings();
-
-            UpdateFiles();
-
-            _ = CheckVersion();
-
             _ = GetEvents();
 
-            _dataTimer.Elapsed += new ElapsedEventHandler(PositionTimer_Elapsed);
-            _dataTimer.Interval = 15000.0;
+            _dataTimer.Elapsed += new ElapsedEventHandler(DataTimer_Elapsed);
+            _dataTimer.Interval = 60000;
             _dataTimer.AutoReset = false;
             _dataTimer.Start();
         }
 
-        private async void PositionTimer_Elapsed(object sender, ElapsedEventArgs e)
+        private async void DataTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
             if (_selectedEvent != null)
             {
                 await GetBookings(_selectedEvent);
+
                 await ProcessVatsimData();
             }
 
@@ -109,21 +101,6 @@ namespace EventsPlugin
 
                 _eventsWindow.Show();
             });
-        }
-
-        private static async Task CheckVersion()
-        {
-            try
-            {
-                var response = await _httpClient.GetStringAsync(_versionUrl);
-
-                var version = JsonConvert.DeserializeObject<Version>(response);
-
-                if (version.Major == _version.Major && version.Minor == _version.Minor) return;
-
-                Errors.Add(new Exception("A new version of the plugin is available."), "Events Plugin");
-            }
-            catch { }
         }
 
         public static async Task GetEvents()
@@ -195,20 +172,6 @@ namespace EventsPlugin
                     var type = cols[5].InnerText.Trim();
                     var cid = cols[6].InnerText.Trim().Replace("Booked [", "").Replace("]", "");
 
-                    var existing = ev.Bookings.FirstOrDefault(x => x.CID == cid);
-
-                    if (existing != null)
-                    {
-                        existing.From = from;
-                        existing.To = to;
-                        existing.CTOT = ctot;
-                        existing.ETA = eta;
-                        existing.Callsign = callsign;
-                        existing.Type = type;
-
-                        continue;
-                    }
-
                     ev.Bookings.Add(new Booking()
                     {
                         CID = cid,
@@ -259,6 +222,43 @@ namespace EventsPlugin
                         ETA = booking.ETA
                     });
                 }
+
+                if (ev.Bookings.Count > 1) return;
+
+                if (url != "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/Test.json") return;
+
+                ev.Bookings.Add(new Booking()
+                {
+                    CID = "1234567",
+                    Callsign = "BAW15",
+                    From = "YMML",
+                    To = "WSSS",
+                    Type = "B77W",
+                    CTOT = "1159",
+                    ETA = "0000"
+                });
+
+                ev.Bookings.Add(new Booking()
+                {
+                    CID = "1234567",
+                    Callsign = "QFA400",
+                    From = "YMML",
+                    To = "WSSS",
+                    Type = "B77W",
+                    CTOT = "1155",
+                    ETA = "0000"
+                });
+
+                ev.Bookings.Add(new Booking()
+                {
+                    CID = "1234567",
+                    Callsign = "LPJ",
+                    From = "YMML",
+                    To = "WSSS",
+                    Type = "B77W",
+                    CTOT = "0000",
+                    ETA = "0000"
+                });
             }
             catch { }
         }
@@ -314,6 +314,10 @@ namespace EventsPlugin
 
         public void OnFDRUpdate(FDP2.FDR updated)
         {
+            if (_selectedEvent == null) return;
+
+            UpdateStrip(updated);
+
             return;
         }
 
@@ -349,18 +353,8 @@ namespace EventsPlugin
             {
                 Type = itemType,
                 ForeColourIdentity = Colours.Identities.StaticTools,
-                Text = SelectedEvent == "World Flight" ? "WF" : booking.COTB()
+                Text = SelectedEvent == "World Flight" ? "WF" : "EV"
             };
-        }
-
-        public CustomColour SelectASDTrackColour(Track track)
-        {
-            return null;
-        }
-
-        public CustomColour SelectGroundTrackColour(Track track)
-        {
-            return null;
         }
 
         public CustomStripItem GetCustomStripItem(string itemType, Track track, FDP2.FDR flightDataRecord, RDP.RadarTrack radarTrack)
@@ -389,7 +383,7 @@ namespace EventsPlugin
 
                 return new CustomStripItem()
                 {
-                    Text = booking.COTB(),
+                    Text = booking.COBT(),
                     Border = BorderFlags.None,
                     ForeColourIdentity = Colours.Identities.StaticTools,
                     BorderColourIdentity = Colours.Identities.State,
@@ -412,95 +406,14 @@ namespace EventsPlugin
             return null;
         }
 
-        private void GetSettings()
+        public CustomColour SelectASDTrackColour(Track track)
         {
-            var configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.PerUserRoamingAndLocal);
-
-            if (!configuration.HasFile) return;
-
-            if (!File.Exists(configuration.FilePath)) return;
-
-            var config = File.ReadAllText(configuration.FilePath);
-
-            XmlDocument doc = new XmlDocument();
-
-            doc.LoadXml(config);
-
-            XmlElement root = doc.DocumentElement;
-
-            var userSettings = root.SelectSingleNode("userSettings");
-
-            var settings = userSettings.SelectSingleNode("vatsys.Properties.Settings");
-
-            foreach (XmlNode node in settings.ChildNodes)
-            {
-                if (node.Attributes.GetNamedItem("name").Value == "DatasetPath")
-                {
-                    DatasetPath = node.InnerText;
-                    break;
-                }
-            }
+            return null;
         }
 
-        private void UpdateFiles()
+        public CustomColour SelectGroundTrackColour(Track track)
         {
-            var showWarning = false;
-
-            var stripsFile = DatasetPath + "\\Strips.xml";
-
-            var stripsSource = AssemblyDirectory + "\\Strips.xml";
-
-            if (!File.Exists(stripsFile))
-            {
-                File.Copy(stripsSource, stripsFile, true);
-                showWarning = true;
-            }
-            else
-            {
-                var existingFile = File.ReadAllText(stripsFile);
-                
-                if (!existingFile.Contains("STRIP_EVENT"))
-                {
-                    File.Copy(stripsSource, stripsFile, true);
-                    showWarning = true;
-                }
-            }
-
-            var labelsFile = DatasetPath + "\\Labels.xml";
-
-            var labelsSource = AssemblyDirectory + "\\Labels.xml";
-
-            if (!File.Exists(labelsFile))
-            {
-                File.Copy(labelsSource, labelsFile, true);
-                showWarning = true;
-            }
-            else
-            {
-                var existingFile = File.ReadAllText(labelsFile);
-
-                var newFile = File.ReadAllText(labelsSource);
-
-                if (!existingFile.Contains("LABEL_EVENT"))
-                {
-                    File.Copy(labelsSource, labelsFile, true);
-                    showWarning = true;
-                }
-            }
-
-            if (showWarning)
-                Errors.Add(new Exception("Updates installed. Restart vatSys for changes to take effect."), "Events Plugin");
-        }
-
-        public static string AssemblyDirectory
-        {
-            get
-            {
-                string codeBase = Assembly.GetExecutingAssembly().CodeBase;
-                UriBuilder uri = new UriBuilder(codeBase);
-                string path = Uri.UnescapeDataString(uri.Path);
-                return Path.GetDirectoryName(path);
-            }
+            return null;
         }
     }
 }
