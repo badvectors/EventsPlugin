@@ -1,6 +1,15 @@
 [
   {
     "CID": 0,
+    "Callsign": "QF6150",
+    "Type": "B744",
+    "From": "YSSY",
+    "To": "YSSY",
+    "CTOT": "0000",
+    "ETA": "0000"
+  },
+  {
+    "CID": 0,
     "Callsign": "BAW47C",
     "Type": "B744",
     "From": "YSSY",
