@@ -1,5 +1,4 @@
-﻿using HtmlAgilityPack;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
@@ -19,9 +18,7 @@ namespace EventsPlugin
     {
         public string Name => "Events";
 
-        public static List<Event> Events { get; set; } = new List<Event>();
-
-        private static HttpClient _httpClient = new HttpClient();
+        private static readonly HttpClient _httpClient = CreateHttpClient();
 
         private static readonly string _dataUrl = "https://data.vatsim.net/v3/vatsim-data.json";
         private Timer _dataTimer { get; set; } = new Timer();
@@ -29,42 +26,39 @@ namespace EventsPlugin
         private static CustomToolStripMenuItem _eventsMenu;
         private static EventsWindow _eventsWindow;
 
-        private static readonly string _eventsUrl = "https://raw.githubusercontent.com/badvectors/EventsPlugin/master/Events.json";
-        public static string SelectedEvent
-        {
-            get { return _selectedEvent?.Name; }
-            set
-            {
-                var ev = Events.FirstOrDefault(x => x.Name == value);
-                if (ev == null)
-                {
-                    _selectedEvent = null;
-                    return;
-                }
-                else
-                {
-                    _selectedEvent = ev;
-                    UpdateStrips();
-                }
-                foreach (var fdr in FDP2.GetFDRs)
-                {
-                    fdr.LocalOpData = fdr.LocalOpData;
-                }
-            }
-        }
-        private static Event _selectedEvent { get; set; }
+#if DEBUG
+        // Local copy of the VATPAC site for testing.
+        private static readonly string _bookingsUrl = "https://localhost:5254/api/bookings";
+#else
+        private static readonly string _bookingsUrl = "https://new.vatpac.org/api/bookings";
+#endif
+
+        private static Event _event { get; set; }
+
+        // Pilots from the last successful VATSIM data feed fetch, or null if none yet.
+        private static Pilot[] _pilots { get; set; }
+
+        // Callsign -> slot for aircraft that should be flagged as event traffic.
+        // Rebuilt from the event slots and the VATSIM data feed; replaced atomically.
+        private static Dictionary<string, VatpacBookingSlot> _bookings = NewBookings();
+
+        // The current event as last fetched from the API, or null when there is none.
+        public static Event CurrentEvent => _event;
 
         public static string DatasetPath { get; set; }
 
         public Plugin()
         {
-            if (!Profile.Name.Contains("Australia")) return;
-
-            _eventsMenu = new CustomToolStripMenuItem(CustomToolStripMenuItemWindowType.Main, CustomToolStripMenuItemCategory.Settings, new ToolStripMenuItem("Events"));
+            _eventsMenu = new CustomToolStripMenuItem(CustomToolStripMenuItemWindowType.Main, CustomToolStripMenuItemCategory.Settings, new ToolStripMenuItem("Event"));
             _eventsMenu.Item.Click += EventsMenu_Click;
             MMI.AddCustomMenuItem(_eventsMenu);
 
-            _ = GetEvents();
+            // Poll straight away on a confirmed ATC login, and clear on disconnect, rather than
+            // waiting for the next timer tick.
+            Network.ValidATCChanged += (s, e) => _ = Refresh();
+            Network.Disconnected += (s, e) => _ = Refresh();
+
+            _ = Refresh();
 
             _dataTimer.Elapsed += new ElapsedEventHandler(DataTimer_Elapsed);
             _dataTimer.Interval = 60000;
@@ -72,14 +66,20 @@ namespace EventsPlugin
             _dataTimer.Start();
         }
 
+        private static HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler();
+#if DEBUG
+            // The local dev server uses a self-signed certificate.
+            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+                errors == System.Net.Security.SslPolicyErrors.None || message.RequestUri.IsLoopback;
+#endif
+            return new HttpClient(handler);
+        }
+
         private async void DataTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            if (_selectedEvent != null)
-            {
-                await GetBookings(_selectedEvent);
-
-                await ProcessVatsimData();
-            }
+            await Refresh();
 
             _dataTimer.Start();
         }
@@ -103,23 +103,56 @@ namespace EventsPlugin
             });
         }
 
-        public static async Task GetEvents()
+        // Only poll while logged on to an official VATSIM server as a real (non-observer, validated) controller.
+        private static bool ShouldPoll =>
+            Network.IsConnected && Network.IsOfficialServer && (Network.Me?.IsRealATC ?? false);
+
+        // Fetches the current event and the VATSIM data feed, then rebuilds the bookings map.
+        // When not eligible to poll (sweatbox, observer, disconnected) all state is cleared instead.
+        public static async Task Refresh()
+        {
+            if (ShouldPoll)
+            {
+                await GetEvent();
+
+                await GetVatsimData();
+            }
+            else
+            {
+                _event = null;
+                _pilots = null;
+            }
+
+            UpdateBookings();
+
+            RefreshStrips();
+
+            _eventsWindow?.UpdateDisplay();
+        }
+
+        // Fetches the current event, with its bookings, from the VATPAC bookings API.
+        // The API returns a single event, or 404 when there is no current event.
+        // Whatever it returns becomes the selected event; 404 deselects.
+        private static async Task GetEvent()
         {
             try
             {
-                SelectedEvent = null;
-
-                Events.Clear();
-
-                var response = await _httpClient.GetStringAsync(_eventsUrl);
-
-                Events = JsonConvert.DeserializeObject<List<Event>>(response);
-
-                if (Events == null) return;
-
-                foreach (var ev in Events)
+                using (var response = await _httpClient.GetAsync(_bookingsUrl))
                 {
-                    await GetBookings(ev);
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    {
+                        _event = null;
+                    }
+                    else
+                    {
+                        response.EnsureSuccessStatusCode();
+
+                        var json = await response.Content.ReadAsStringAsync();
+
+                        var @event = JsonConvert.DeserializeObject<Event>(json);
+
+                        if (@event != null) _event = @event;
+                    }
                 }
             }
             catch (Exception ex)
@@ -128,143 +161,11 @@ namespace EventsPlugin
             }
         }
 
-        private static async Task GetBookings(Event ev)
+        // Fetches the VATSIM data feed. On failure the previous pilot list is kept.
+        private static async Task GetVatsimData()
         {
-            try
-            {
-                var web = new HtmlWeb();
+            if (_event == null) return;
 
-                foreach (var url in ev.Urls)
-                {
-                    if (url.EndsWith(".json"))
-                    {
-                        await Json(ev, url);
-                        continue;
-                    }
-
-                    var htmlDocument = web.Load(url);
-
-                    if (htmlDocument.Text.Contains("Booking System by Dave Roverts")) Roverts(ev, htmlDocument);
-                }
-            }
-            catch { }
-        }
-
-        private static void Roverts(Event ev, HtmlAgilityPack.HtmlDocument htmlDocument)
-        {
-            try
-            {
-                var rows = htmlDocument.DocumentNode.SelectNodes("//table[@class='table table-hover table-responsive']//tr");
-
-                if (rows == null) return;
-
-                foreach (HtmlNode row in rows.Skip(1))
-                {
-                    var cols = row.SelectNodes(".//td");
-
-                    if (cols[6].InnerText.Contains("Click here")) continue;
-
-                    var from = cols[0].InnerText.Trim();
-                    var to = cols[1].InnerText.Trim();
-                    var ctot = cols[2].InnerText.Trim().Replace("z", "");
-                    var eta = cols[3].InnerText.Trim().Replace("z", "");
-                    var callsign = cols[4].InnerText.Trim();
-                    var type = cols[5].InnerText.Trim();
-                    var cid = cols[6].InnerText.Trim().Replace("Booked [", "").Replace("]", "");
-
-                    ev.Bookings.Add(new Booking()
-                    {
-                        CID = cid,
-                        Callsign = callsign,
-                        From = from,
-                        To = to,
-                        Type = type,
-                        CTOT = ctot,
-                        ETA = eta
-                    });
-                }
-            }
-            catch { }
-        }
-
-        private static async Task Json(Event ev, string url)
-        {
-            try
-            {
-                var response = await _httpClient.GetStringAsync(url);
-
-                var bookings = JsonConvert.DeserializeObject<List<Booking>>(response);
-
-                foreach (var booking in bookings)
-                {
-                    var existing = ev.Bookings.FirstOrDefault(x => x.CID == booking.CID && x.Callsign == booking.Callsign);
-
-                    if (existing != null)
-                    {
-                        existing.From = booking.From;
-                        existing.To = booking.To;
-                        existing.CTOT = booking.CTOT;
-                        existing.ETA = booking.ETA;
-                        existing.Callsign = booking.Callsign;
-                        existing.Type = booking.Type;
-
-                        continue;
-                    }
-
-                    ev.Bookings.Add(new Booking()
-                    {
-                        CID = booking.CID,
-                        Callsign = booking.Callsign,
-                        From = booking.From,
-                        To = booking.To,
-                        Type = booking.Type,
-                        CTOT = booking.CTOT,
-                        ETA = booking.ETA
-                    });
-                }
-
-                if (ev.Bookings.Count > 1) return;
-
-                if (url != "https://raw.githubusercontent.com/badvectors/EventsPlugin/refs/heads/master/Test.json") return;
-
-                ev.Bookings.Add(new Booking()
-                {
-                    CID = "1234567",
-                    Callsign = "BAW15",
-                    From = "YMML",
-                    To = "WSSS",
-                    Type = "B77W",
-                    CTOT = "1159",
-                    ETA = "0000"
-                });
-
-                ev.Bookings.Add(new Booking()
-                {
-                    CID = "1234567",
-                    Callsign = "QFA400",
-                    From = "YMML",
-                    To = "WSSS",
-                    Type = "B77W",
-                    CTOT = "1155",
-                    ETA = "0000"
-                });
-
-                ev.Bookings.Add(new Booking()
-                {
-                    CID = "1234567",
-                    Callsign = "LPJ",
-                    From = "YMML",
-                    To = "WSSS",
-                    Type = "B77W",
-                    CTOT = "0000",
-                    ETA = "0000"
-                });
-            }
-            catch { }
-        }
-
-        private async Task<VatsimData> GetVatsimData()
-        {
             try
             {
                 var response = await _httpClient.GetAsync(_dataUrl);
@@ -273,51 +174,89 @@ namespace EventsPlugin
 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
 
-                return JsonConvert.DeserializeObject<VatsimData>(jsonResponse);
+                var data = JsonConvert.DeserializeObject<VatsimData>(jsonResponse);
+
+                if (data?.pilots != null) _pilots = data.pilots;
             }
-            catch { return null; }
+            catch { }
         }
 
-        private async Task ProcessVatsimData()
+        private static Dictionary<string, VatpacBookingSlot> NewBookings()
         {
-            if (_selectedEvent == null) return;
+            return new Dictionary<string, VatpacBookingSlot>(StringComparer.OrdinalIgnoreCase);
+        }
 
-            var vatsimData = await GetVatsimData();
+        // Builds the callsign -> slot map:
+        //  1. Every booked slot is keyed by its slot callsign.
+        //  2. A pilot online with a slot callsign but a CID other than the booking's is not event traffic,
+        //     so that callsign is removed.
+        //  3. A pilot online whose CID holds a booking, but under a different callsign, is event traffic
+        //     under the callsign they are actually using.
+        // Pilots not present in the data feed (e.g. sweatbox) keep the plain callsign match.
+        private static void UpdateBookings()
+        {
+            var bookings = NewBookings();
 
-            if (vatsimData == null) return;
+            var slots = _event?.Slots?.Where(x => x.CID.HasValue && !string.IsNullOrWhiteSpace(x.Callsign)).ToList();
 
-            foreach (var pilot in vatsimData.pilots)
+            if (slots == null || slots.Count == 0)
             {
-                var bookingByCID = _selectedEvent.Bookings
-                    .FirstOrDefault(x => x.CID == pilot.cid.ToString());
+                _bookings = bookings;
+                return;
+            }
 
-                var bookingByCallsign = _selectedEvent.Bookings
-                    .FirstOrDefault(x => x.Callsign == pilot.callsign);
+            foreach (var slot in slots)
+            {
+                if (!bookings.ContainsKey(slot.Callsign)) bookings[slot.Callsign] = slot;
+            }
 
-                // If there is a booking for the CID but the callsign is different, override to the new callsign.
-                if (bookingByCID != null && bookingByCID.Callsign != pilot.callsign)
+            if (_pilots != null)
+            {
+                foreach (var pilot in _pilots)
                 {
-                    bookingByCID.Callsign = pilot.callsign;
+                    if (string.IsNullOrWhiteSpace(pilot.callsign)) continue;
 
-                    continue;
+                    if (bookings.TryGetValue(pilot.callsign, out var byCallsign) && byCallsign.CID != pilot.cid)
+                    {
+                        bookings.Remove(pilot.callsign);
+                    }
                 }
 
-                // If there is a booking for the callsign but a different CID is logged on, remove the booking from the callsign.
-                if (bookingByCallsign != null && bookingByCallsign.CID != "0" && bookingByCallsign.CID != pilot.cid.ToString())
+                foreach (var pilot in _pilots)
                 {
-                    bookingByCallsign.Callsign = null;
+                    if (string.IsNullOrWhiteSpace(pilot.callsign)) continue;
 
-                    continue;
+                    var byCid = slots.FirstOrDefault(x => x.CID == pilot.cid
+                        && string.Equals(x.Callsign, pilot.callsign, StringComparison.OrdinalIgnoreCase))
+                        ?? slots.FirstOrDefault(x => x.CID == pilot.cid);
+
+                    if (byCid == null) continue;
+
+                    bookings[pilot.callsign] = byCid;
                 }
+            }
+
+            _bookings = bookings;
+        }
+
+        private static VatpacBookingSlot GetBooking(string callsign)
+        {
+            if (string.IsNullOrWhiteSpace(callsign)) return null;
+
+            return _bookings.TryGetValue(callsign, out var slot) ? slot : null;
+        }
+
+        // Nudge every FDR so vatSys re-queries the custom strip and label items.
+        private static void RefreshStrips()
+        {
+            foreach (var fdr in FDP2.GetFDRs)
+            {
+                fdr.LocalOpData = fdr.LocalOpData;
             }
         }
 
         public void OnFDRUpdate(FDP2.FDR updated)
         {
-            if (_selectedEvent == null) return;
-
-            UpdateStrip(updated);
-
             return;
         }
 
@@ -328,43 +267,31 @@ namespace EventsPlugin
 
         public CustomLabelItem GetCustomLabelItem(string itemType, Track track, FDP2.FDR flightDataRecord, RDP.RadarTrack radarTrack)
         {
-            if (_selectedEvent == null) return null;
+            if (_event == null) return null;
 
             if (flightDataRecord == null) return null;
 
             if (itemType != "LABEL_EVENT") return null;
 
-            var booking = _selectedEvent.Bookings
-                .FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
+            var booking = GetBooking(flightDataRecord.Callsign);
 
             if (booking == null) return null;
-
-            if (flightDataRecord.ATD != DateTime.MaxValue)
-            {
-                return new CustomLabelItem()
-                {
-                    Type = itemType,
-                    ForeColourIdentity = Colours.Identities.StaticTools,
-                    Text = SelectedEvent == "World Flight" ? "WF" : "EV"
-                };
-            }
 
             return new CustomLabelItem()
             {
                 Type = itemType,
                 ForeColourIdentity = Colours.Identities.StaticTools,
-                Text = SelectedEvent == "World Flight" ? "WF" : "EV"
+                Text = "EV"
             };
         }
 
         public CustomStripItem GetCustomStripItem(string itemType, Track track, FDP2.FDR flightDataRecord, RDP.RadarTrack radarTrack)
         {
-            if (_selectedEvent == null) return null;
+            if (_event == null) return null;
 
             if (flightDataRecord == null) return null;
 
-            var booking = _selectedEvent.Bookings
-                .FirstOrDefault(x => x.Callsign == flightDataRecord.Callsign);
+            var booking = GetBooking(flightDataRecord.Callsign);
 
             if (itemType == "STRIP_ATD")
             {
@@ -379,11 +306,11 @@ namespace EventsPlugin
                     };
                 }
 
-                if (booking == null || SelectedEvent == "World Flight") return null;
+                if (booking == null) return null;
 
                 return new CustomStripItem()
                 {
-                    Text = booking.COBT(),
+                    Text = COBT(booking.Utc),
                     Border = BorderFlags.None,
                     ForeColourIdentity = Colours.Identities.StaticTools,
                     BorderColourIdentity = Colours.Identities.State,
@@ -396,7 +323,7 @@ namespace EventsPlugin
 
                 return new CustomStripItem()
                 {
-                    Text = SelectedEvent == "World Flight" ? "WF" : "EV",
+                    Text = "EV",
                     Border = BorderFlags.None,
                     ForeColourIdentity = Colours.Identities.StaticTools,
                     BorderColourIdentity = Colours.Identities.State,
@@ -404,6 +331,16 @@ namespace EventsPlugin
             }
 
             return null;
+        }
+
+        public static DateTime COBT_DateTime(DateTime ctot)
+        {
+            return ctot.AddMinutes(-10);
+        }
+
+        public static string COBT(DateTime ctot)
+        {
+            return COBT_DateTime(ctot).ToString("HHmm");
         }
 
         public CustomColour SelectASDTrackColour(Track track)
