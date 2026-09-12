@@ -149,9 +149,7 @@ namespace EventsPlugin
 
                         var json = await response.Content.ReadAsStringAsync();
 
-                        var @event = JsonConvert.DeserializeObject<Event>(json);
-
-                        if (@event != null) _event = @event;
+                        _event = ParseEvent(json);
                     }
                 }
             }
@@ -159,6 +157,22 @@ namespace EventsPlugin
             {
                 Errors.Add(new Exception($"Could not fetch list of events: {ex.Message}"), "Events Plugin");
             }
+        }
+
+        // Accepts either the current API shape (a single event object) or the older shape
+        // (an array of events, of which the first is taken). Empty array or JSON null means no event.
+        private static Event ParseEvent(string json)
+        {
+            var token = Newtonsoft.Json.Linq.JToken.Parse(json);
+
+            if (token is Newtonsoft.Json.Linq.JArray array)
+            {
+                token = array.FirstOrDefault();
+            }
+
+            if (token == null || token.Type != Newtonsoft.Json.Linq.JTokenType.Object) return null;
+
+            return token.ToObject<Event>();
         }
 
         // Fetches the VATSIM data feed. On failure the previous pilot list is kept.
